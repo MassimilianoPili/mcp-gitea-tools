@@ -99,12 +99,12 @@ public class GiteaTools {
             description = "Delete a Gitea repository. This action is irreversible.")
     public Mono<String> deleteRepo(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name) {
+            @ToolParam(description = "Repository name") String repo) {
         return client.delete()
-                .uri("/repos/{owner}/{repo}", owner(owner), name)
+                .uri("/repos/{owner}/{repo}", owner(owner), repo)
                 .retrieve()
                 .toBodilessEntity()
-                .map(r -> "Deleted: " + owner(owner) + "/" + name)
+                .map(r -> "Deleted: " + owner(owner) + "/" + repo)
                 .onErrorResume(e -> Mono.just("ERROR: " + e.getMessage()));
     }
 
@@ -112,24 +112,24 @@ public class GiteaTools {
             description = "Get details of a Gitea repository: size, stars, forks, default branch, timestamps.")
     public Mono<Map<String, Object>> getRepo(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name) {
+            @ToolParam(description = "Repository name") String repo) {
         return client.get()
-                .uri("/repos/{owner}/{repo}", owner(owner), name)
+                .uri("/repos/{owner}/{repo}", owner(owner), repo)
                 .retrieve()
                 .bodyToMono(Map.class)
-                .map(repo -> {
+                .map(resp -> {
                     Map<String, Object> result = new HashMap<>();
-                    result.put("name", str(repo, "name"));
-                    result.put("description", str(repo, "description"));
-                    result.put("private", repo.getOrDefault("private", false));
-                    result.put("default_branch", str(repo, "default_branch"));
-                    result.put("stars_count", repo.getOrDefault("stars_count", 0));
-                    result.put("forks_count", repo.getOrDefault("forks_count", 0));
-                    result.put("size", repo.getOrDefault("size", 0));
-                    result.put("ssh_url", str(repo, "ssh_url"));
-                    result.put("html_url", str(repo, "html_url"));
-                    result.put("created_at", str(repo, "created_at"));
-                    result.put("updated_at", str(repo, "updated_at"));
+                    result.put("name", str(resp, "name"));
+                    result.put("description", str(resp, "description"));
+                    result.put("private", resp.getOrDefault("private", false));
+                    result.put("default_branch", str(resp, "default_branch"));
+                    result.put("stars_count", resp.getOrDefault("stars_count", 0));
+                    result.put("forks_count", resp.getOrDefault("forks_count", 0));
+                    result.put("size", resp.getOrDefault("size", 0));
+                    result.put("ssh_url", str(resp, "ssh_url"));
+                    result.put("html_url", str(resp, "html_url"));
+                    result.put("created_at", str(resp, "created_at"));
+                    result.put("updated_at", str(resp, "updated_at"));
                     return result;
                 })
                 .onErrorResume(e -> Mono.just(mapOf("error", e.getMessage())));
@@ -141,9 +141,9 @@ public class GiteaTools {
             description = "List branches of a Gitea repository.")
     public Mono<List<Map<String, Object>>> listBranches(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name) {
+            @ToolParam(description = "Repository name") String repo) {
         return client.get()
-                .uri("/repos/{owner}/{repo}/branches", owner(owner), name)
+                .uri("/repos/{owner}/{repo}/branches", owner(owner), repo)
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .map(b -> mapOf(
@@ -160,14 +160,14 @@ public class GiteaTools {
             description = "Read a file from a Gitea repository. Returns decoded content.")
     public Mono<String> getFile(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name,
+            @ToolParam(description = "Repository name") String repo,
             @ToolParam(description = "File path (e.g. README.md)") String path,
             @ToolParam(description = "Branch or commit ref (default: main)", required = false) String ref) {
         String uri = ref != null && !ref.isBlank()
                 ? "/repos/{owner}/{repo}/raw/{path}?ref={ref}"
                 : "/repos/{owner}/{repo}/raw/{path}";
         return client.get()
-                .uri(uri, owner(owner), name, path, ref != null ? ref : "")
+                .uri(uri, owner(owner), repo, path, ref != null ? ref : "")
                 .retrieve()
                 .bodyToMono(String.class)
                 .onErrorResume(e -> Mono.just("ERROR: " + e.getMessage()));
@@ -179,9 +179,9 @@ public class GiteaTools {
             description = "List releases of a Gitea repository.")
     public Mono<List<Map<String, Object>>> listReleases(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name) {
+            @ToolParam(description = "Repository name") String repo) {
         return client.get()
-                .uri("/repos/{owner}/{repo}/releases?limit=20", owner(owner), name)
+                .uri("/repos/{owner}/{repo}/releases?limit=20", owner(owner), repo)
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .map(r -> mapOf(
@@ -199,7 +199,7 @@ public class GiteaTools {
             description = "Create a new release for a Gitea repository.")
     public Mono<Map<String, Object>> createRelease(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name,
+            @ToolParam(description = "Repository name") String repo,
             @ToolParam(description = "Tag name (e.g. v1.0.0)") String tag,
             @ToolParam(description = "Release title") String title,
             @ToolParam(description = "Release body/notes", required = false) String body) {
@@ -211,7 +211,7 @@ public class GiteaTools {
                 "prerelease", false
         );
         return client.post()
-                .uri("/repos/{owner}/{repo}/releases", owner(owner), name)
+                .uri("/repos/{owner}/{repo}/releases", owner(owner), repo)
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Map.class)
@@ -229,9 +229,9 @@ public class GiteaTools {
             description = "List tags of a Gitea repository.")
     public Mono<List<Map<String, Object>>> listTags(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name) {
+            @ToolParam(description = "Repository name") String repo) {
         return client.get()
-                .uri("/repos/{owner}/{repo}/tags?limit=50", owner(owner), name)
+                .uri("/repos/{owner}/{repo}/tags?limit=50", owner(owner), repo)
                 .retrieve()
                 .bodyToFlux(Map.class)
                 .map(t -> mapOf(
@@ -246,7 +246,7 @@ public class GiteaTools {
             description = "Create a git tag on a Gitea repository. Can trigger CI/CD workflows on tag patterns.")
     public Mono<Map<String, Object>> createTag(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name,
+            @ToolParam(description = "Repository name") String repo,
             @ToolParam(description = "Tag name (e.g. v1.0.0)") String tag,
             @ToolParam(description = "Tag message (creates annotated tag)", required = false) String message,
             @ToolParam(description = "Target branch or commit SHA (default: default branch)", required = false) String target) {
@@ -255,7 +255,7 @@ public class GiteaTools {
         if (message != null && !message.isBlank()) payload.put("message", message);
         if (target != null && !target.isBlank()) payload.put("target", target);
         return client.post()
-                .uri("/repos/{owner}/{repo}/tags", owner(owner), name)
+                .uri("/repos/{owner}/{repo}/tags", owner(owner), repo)
                 .bodyValue(payload)
                 .retrieve()
                 .bodyToMono(Map.class)
@@ -270,10 +270,10 @@ public class GiteaTools {
             description = "Delete a tag from a Gitea repository.")
     public Mono<String> deleteTag(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name,
+            @ToolParam(description = "Repository name") String repo,
             @ToolParam(description = "Tag name to delete") String tag) {
         return client.delete()
-                .uri("/repos/{owner}/{repo}/tags/{tag}", owner(owner), name, tag)
+                .uri("/repos/{owner}/{repo}/tags/{tag}", owner(owner), repo, tag)
                 .retrieve()
                 .toBodilessEntity()
                 .map(r -> "Deleted tag: " + tag)
@@ -286,11 +286,11 @@ public class GiteaTools {
             description = "Set or update an Actions secret on a Gitea repository.")
     public Mono<String> setSecret(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name,
+            @ToolParam(description = "Repository name") String repo,
             @ToolParam(description = "Secret name") String secretName,
             @ToolParam(description = "Secret value") String value) {
         return client.put()
-                .uri("/repos/{owner}/{repo}/actions/secrets/{secret}", owner(owner), name, secretName)
+                .uri("/repos/{owner}/{repo}/actions/secrets/{secret}", owner(owner), repo, secretName)
                 .bodyValue(Map.of("data", value))
                 .retrieve()
                 .toBodilessEntity()
@@ -321,9 +321,9 @@ public class GiteaTools {
             description = "List recent workflow runs (Actions) for a Gitea repository.")
     public Mono<List<Map<String, Object>>> listWorkflowRuns(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name) {
+            @ToolParam(description = "Repository name") String repo) {
         return client.get()
-                .uri("/repos/{owner}/{repo}/actions/runs?limit=20", owner(owner), name)
+                .uri("/repos/{owner}/{repo}/actions/runs?limit=20", owner(owner), repo)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(resp -> {
@@ -353,10 +353,10 @@ public class GiteaTools {
             description = "Get details and jobs of a specific workflow run.")
     public Mono<Map<String, Object>> getWorkflowRun(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name,
+            @ToolParam(description = "Repository name") String repo,
             @ToolParam(description = "Workflow run ID") Long runId) {
         return client.get()
-                .uri("/repos/{owner}/{repo}/actions/runs/{id}", owner(owner), name, runId)
+                .uri("/repos/{owner}/{repo}/actions/runs/{id}", owner(owner), repo, runId)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .map(r -> (Map<String, Object>) r)
@@ -367,13 +367,13 @@ public class GiteaTools {
             description = "Manually trigger a workflow (dispatch event) on a Gitea repository.")
     public Mono<String> triggerWorkflow(
             @ToolParam(description = "Repository owner") String owner,
-            @ToolParam(description = "Repository name") String name,
+            @ToolParam(description = "Repository name") String repo,
             @ToolParam(description = "Workflow filename (e.g. deploy.yml)") String workflow,
             @ToolParam(description = "Branch or tag ref (default: main)", required = false) String ref) {
         String targetRef = ref != null && !ref.isBlank() ? ref : "main";
         return client.post()
                 .uri("/repos/{owner}/{repo}/actions/workflows/{workflow}/dispatches",
-                        owner(owner), name, workflow)
+                        owner(owner), repo, workflow)
                 .bodyValue(Map.of("ref", targetRef))
                 .retrieve()
                 .toBodilessEntity()
