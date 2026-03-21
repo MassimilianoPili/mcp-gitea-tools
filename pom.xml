@@ -7,7 +7,7 @@
 
     <groupId>io.github.massimilianopili</groupId>
     <artifactId>mcp-gitea-tools</artifactId>
-    <version>0.1.1</version>
+    <version>0.1.2</version>
     <packaging>jar</packaging>
 
     <name>MCP Gitea Tools</name>
